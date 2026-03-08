@@ -1,8 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Configure images
   images: {
     unoptimized: true,
+  },
+  experimental: {
+    serverComponentsExternalPackages: ["bcryptjs"],
   },
 };
 
