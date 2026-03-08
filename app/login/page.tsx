@@ -12,10 +12,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { toast } from "sonner";
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -24,26 +24,18 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
 
     try {
-      const result = await signIn("credentials", {
+      // Use redirect: true with callbackUrl
+      await signIn("credentials", {
         email: formData.email,
         password: formData.password,
-        redirect: false,
+        callbackUrl: "/admin",
+        redirect: true,
       });
-
-      if (result?.error) {
-        toast.error("Invalid credentials");
-      } else {
-        toast.success("Login successful! Redirecting...");
-        // Simple redirect after success
-        setTimeout(() => {
-          window.location.replace("/admin");
-        }, 1000);
-      }
     } catch (error) {
-      toast.error("An error occurred during login");
-    } finally {
+      setError("An error occurred during login");
       setIsLoading(false);
     }
   };
@@ -58,6 +50,11 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {error && (
+            <div className="mb-4 p-3 rounded bg-red-50 text-red-600 text-sm">
+              {error}
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
