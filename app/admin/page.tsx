@@ -12,7 +12,6 @@ export default async function AdminPage() {
     redirect("/login");
   }
 
-  // Get all users
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "desc" },
   });

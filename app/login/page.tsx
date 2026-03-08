@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { signIn, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,21 +15,11 @@ import {
 import { toast } from "sonner";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const { data: session, status } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
-
-  // Redirect if already logged in
-  useEffect(() => {
-    if (status === "authenticated" && session?.user) {
-      const redirectPath = session.user.role === "ADMIN" ? "/admin" : "/dashboard";
-      window.location.href = redirectPath;
-    }
-  }, [session, status]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,11 +35,11 @@ export default function LoginPage() {
       if (result?.error) {
         toast.error("Invalid credentials");
       } else {
-        toast.success("Login successful");
-        // Wait a bit for session to update
+        toast.success("Login successful! Redirecting...");
+        // Simple redirect after success
         setTimeout(() => {
-          window.location.href = "/admin";
-        }, 500);
+          window.location.replace("/admin");
+        }, 1000);
       }
     } catch (error) {
       toast.error("An error occurred during login");
