@@ -1,13 +1,17 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { initAdmin } from "@/lib/init-admin";
 import { NextRequest, NextResponse } from "next/server";
 
 const MANAGER_URL = process.env.N8N_MANAGER_URL || "https://manager.maxhmd.dev";
 const MANAGER_SECRET = process.env.N8N_MANAGER_SECRET || "";
 const BASE_DOMAIN = process.env.N8N_BASE_DOMAIN || "n8n.maxhmd.dev";
 
-// GET /api/admin/users - List all users from local DB
+// GET /api/admin/users - List all users
 export async function GET() {
+  // Auto-create admin on first request
+  await initAdmin();
+  
   const session = await auth();
 
   if (!session?.user || session.user.role !== "ADMIN") {
@@ -19,7 +23,6 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
-    // Add n8nUrl to each user for display
     const usersWithUrl = users.map((user) => ({
       ...user,
       n8nUrl: `https://${user.username}.${BASE_DOMAIN}`,
@@ -37,6 +40,9 @@ export async function GET() {
 
 // POST /api/admin/users - Create a new user via manager API
 export async function POST(request: NextRequest) {
+  // Auto-create admin on first request
+  await initAdmin();
+  
   const session = await auth();
 
   if (!session?.user || session.user.role !== "ADMIN") {
@@ -46,7 +52,6 @@ export async function POST(request: NextRequest) {
   try {
     const { username } = await request.json();
 
-    // Validate input
     if (!username || typeof username !== "string") {
       return NextResponse.json(
         { error: "Username is required" },
@@ -54,7 +59,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate username format (alphanumeric, hyphen, underscore only)
     const validUsername = /^[a-z0-9_-]+$/i;
     if (!validUsername.test(username)) {
       return NextResponse.json(
@@ -63,7 +67,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if username already exists in local DB
     const existingUser = await prisma.user.findUnique({
       where: { username: username.toLowerCase() },
     });
@@ -75,7 +78,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call the manager API to create the n8n instance
     const managerResponse = await fetch(`${MANAGER_URL}/api/create-user`, {
       method: "POST",
       headers: {
@@ -96,12 +98,11 @@ export async function POST(request: NextRequest) {
 
     const managerData = await managerResponse.json();
 
-    // Create user in local database
     const user = await prisma.user.create({
       data: {
-        email: `${username.toLowerCase()}@n8n.local`, // placeholder email
+        email: `${username.toLowerCase()}@n8n.local`,
         username: username.toLowerCase(),
-        password: "", // No password - user sets it on first n8n visit
+        password: "",
         role: "USER",
         isActive: true,
       },
@@ -179,7 +180,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Get user before deleting to notify manager (optional)
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -191,13 +191,10 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Delete from local database
     await prisma.user.delete({
       where: { id: userId },
     });
 
-    // Optionally notify manager to delete the container
-    // This depends on your manager API capabilities
     try {
       await fetch(`${MANAGER_URL}/api/delete-user`, {
         method: "POST",
@@ -208,7 +205,6 @@ export async function DELETE(request: NextRequest) {
         body: JSON.stringify({ username: user.username }),
       });
     } catch (e) {
-      // Log but don't fail if manager deletion fails
       console.warn("Failed to notify manager of user deletion:", e);
     }
 
